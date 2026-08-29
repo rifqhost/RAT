@@ -30,8 +30,19 @@ npm start
 
 Server akan berjalan di `http://localhost:8080` (atau sesuai `PORT` di `.env`).
 
-> Untuk diakses dari HP yang bukan emulator, gunakan **IP LAN** PC, contohnya
-> `http://192.168.1.10:8080`. Pastikan port 8080 terbuka di firewall.
+### Buka port 8080 di firewall (wajib untuk HP fisik)
+Firewall Windows sering memblokir koneksi masuk dari HP. Jalankan sekali dengan
+**Run as administrator**:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\open-firewall-8080.ps1
+```
+
+Bisa juga manual: `Windows Defender Firewall → Advanced settings → Inbound
+Rules → New Rule → Port → TCP 8080 → Allow`.
+
+> Untuk diakses dari HP, pakai **IP LAN** PC (cek dengan `ipconfig`, cari IPv4).
+> Contoh `http://192.168.1.7:8080`. Pastikan port 8080 terbuka di firewall.
 
 ---
 
