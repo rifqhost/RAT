@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import http from 'node:http';
+import { pathToFileURL } from 'node:url';
 import { config } from './config.js';
 import { Store } from './store.js';
 import { WsHub } from './ws/hub.js';
@@ -49,7 +50,11 @@ export function createApp() {
   return { app, store, hub };
 }
 
-if (import.meta.url === new URL(process.argv[1] ?? '', 'file:').href) {
+const isEntryPoint =
+  process.argv[1] !== undefined &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isEntryPoint) {
   const { app, hub } = createApp();
   const server = http.createServer(app);
   hub.attach(server);
