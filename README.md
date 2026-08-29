@@ -6,6 +6,8 @@ on another device) over a peer-to-peer WebRTC connection, coordinated by a
 signaling server. Everything requires explicit user consent on the agent — no
 stealth, no bypass.
 
+> **Pengguna Indonesia / step-by-step instalasi & pakai: lihat [USAGE.md](docs/USAGE.md).**
+
 ## Monorepo layout
 
 ```
@@ -65,7 +67,9 @@ flutter build apk --debug     # or --release
 
 APK output: `controller/build/app/outputs/flutter-apk/app-debug.apk`
 
-Configure the server address in `controller/lib/config.dart` (`AppConfig.baseUrl`).
+Configure the server address at build time with `--dart-define=RMODZ_SERVER_URL=...`
+(defaults to `http://10.0.2.2:8080`, the emulator loopback for the host machine):
+`flutter build apk --release --dart-define=RMODZ_SERVER_URL=http://192.168.1.10:8080`
 
 ## Agent app
 
@@ -79,9 +83,9 @@ flutter build apk --debug
 
 APK output: `agent/build/app/outputs/flutter-apk/app-debug.apk`
 
-Configure the server address in `agent/lib/config.dart`. On device, enable the
-**RMODZ accessibility service** (Settings → Accessibility) when you want touch
-control.
+Configure the server address at build time with `--dart-define=RMODZ_SERVER_URL=...`
+(defaults to `http://10.0.2.2:8080`). On device, enable the **RMODZ accessibility
+service** (Settings → Accessibility) when you want touch control.
 
 ## Testing on devices
 

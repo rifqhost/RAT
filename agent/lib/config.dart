@@ -1,9 +1,13 @@
-/// App-wide configuration.
+/// App-wide configuration. Override the server URL at build time:
+///   flutter build apk --dart-define=RMODZ_SERVER_URL=https://your-server
 library;
 
 class AppConfig {
   /// Base URL of the RMODZ signaling server.
-  static const String baseUrl = 'http://10.0.2.2:8080';
+  static const String baseUrl = String.fromEnvironment(
+    'RMODZ_SERVER_URL',
+    defaultValue: 'http://10.0.2.2:8080',
+  );
 
   /// WebSocket URL derived from [baseUrl].
   static String get wsUrl {

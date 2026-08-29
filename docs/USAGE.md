@@ -1,0 +1,130 @@
+# Panduan Penggunaan RMODZ Remote
+
+RMODZ Remote adalah sistem bantuan jarak jauh berbasis **persetujuan (consent)**.
+Satu perangkat menjalankan **Controller** (penolong), perangkat lain menjalankan
+**Agent** (yang dibantu). Keduanya terhubung lewat server signaling, lalu
+membentuk koneksi P2P WebRTC. Semua tindakan remote memerlukan persetujuan
+eksplisit di sisi Agent.
+
+---
+
+## Ringkasan komponen
+
+| Komponen       | Perangkat | Fungsi                                     |
+|----------------|-----------|--------------------------------------------|
+| **Server**     | PC / VPS  | Auth, pairing, signaling WebSocket, session |
+| **Controller** | HP A      | Login, pasang kode, lihat layar, kontrol    |
+| **Agent**      | HP B      | Didaftarkan, disetujui, dibantu remote      |
+
+---
+
+## 1. Menjalankan server
+
+```bash
+cd server
+npm install
+cp .env.example .env      # Windows: copy .env.example .env
+npm run build
+npm start
+```
+
+Server akan berjalan di `http://localhost:8080` (atau sesuai `PORT` di `.env`).
+
+> Untuk diakses dari HP yang bukan emulator, gunakan **IP LAN** PC, contohnya
+> `http://192.168.1.10:8080`. Pastikan port 8080 terbuka di firewall.
+
+---
+
+## 2. Build APK dengan alamat server yang benar
+
+Default kedua app adalah `http://10.0.2.2:8080` (khusus **emulator Android**
+untuk menuju localhost PC).
+
+### Untuk perangkat fisik
+Override alamat server saat build:
+
+```bash
+# Controller
+cd controller
+flutter build apk --release --dart-define=RMODZ_SERVER_URL=http://192.168.1.10:8080
+
+# Agent
+cd ../agent
+flutter build apk --release --dart-define=RMODZ_SERVER_URL=http://192.168.1.10:8080
+```
+
+Versi **debug** (untuk tes) tinggal pakai `--debug` sebagai pengganti `--release`.
+
+### Lokasi APK hasil build
+- Controller: `controller/build/app/outputs/flutter-apk/app-release.apk`
+- Agent: `agent/build/app/outputs/flutter-apk/app-release.apk`
+
+---
+
+## 3. Instal APK di dua HP
+
+1. HP **A** (penolong) → instal APK Controller.
+2. HP **B** (yang dibantu) → instal APK Agent.
+
+> Kedua HP harus bisa mengakses server. Untuk jaringan LAN (satu Wi-Fi), arahkan
+> ke IP LAN PC. Untuk beda jaringan, tambahkan **TURN server** (lihat bagian
+> STUN/TURN di `server/README.md`).
+
+---
+
+## 4. Konfigurasi di HP B (Agent) — sekali saja
+
+Buka app Agent, lalu beri izin:
+
+1. **Kamera & Mikrofon** — untuk fitur camera/mic mendapat izin runtime.
+2. **Notifikasi** — agar service remote terus berjalan.
+3. **Aktifkan Accessibility "RMODZ"**:
+   `Setelan → Aksesibilitas / Aksesbilitas → RMODZ → aktifkan`
+   (dibutuhkan untuk kontrol sentuh/navigasi/teks).
+4. Setujui **Foreground Service / screen capture** saat pertama kali diminta.
+
+Agent otomatis mendaftarkan diri dan mendapatkan ID perangkat (bentuk
+`RMDZ-XXXXXX`).
+
+---
+
+## 5. Alur pairing & remote (tiap sesi)
+
+1. Di HP **B** (Agent): buka app → pada panel pairing, tekan **Generate
+   pairing code** → muncul kode 6 digit.
+2. Di HP **A** (Controller): buka app → login/register akun → masukkan kode
+   6 digit tersebut.
+3. Muncul dialog persetujuan di HP **B** → pengguna HP B **tekan Setujui**.
+4. Controller meminta **session** + daftar izin (screen / camera / mic /
+   control). Di HP B muncul dialog izin → pengguna Hp B pilih izin lalu
+   **Setujui** (atau Tolak).
+5. Koneksi WebRTC terbentuk. HP A kini dapat:
+   - melihat **layar** HP B,
+   - mengirim **tap / navigasi / teks** (jika izin *control* diberikan),
+   - mengirim **file** lewat jalur data.
+6. Kapan saja, salah satu sisi bisa **mengakhiri session** atau **mencabut izin**
+   tertentu.
+
+> Semua persetujuan adalah eksplisit di sisi Agent. Tidak ada remote diam-diam.
+
+---
+
+## Troubleshooting
+
+- **App tidak terhubung ke server** → pastikan `RMODZ_SERVER_URL` benar saat
+  build, HP satu jaringan dengan server, dan port terbuka.
+- **Layar tidak muncul / hitam** → pastikan izin **screen capture (MediaProjection)**
+  dan **Foreground Service** disetujui di Agent.
+- **Sentuhan tidak bekerja** → pastikan **Accessibility RMODZ** aktif.
+- **Tidak bisa terhubung antar jaringan yang berbeda** → butuh **TURN server**
+  (lihat `server/README.md`).
+
+---
+
+## Setelan teknis
+
+- Kedua app butuh **API 23+** (`minSdk = 23`).
+- Koneksi P2P; STUN bawaan untuk jaringan normal, **TURN disarankan** untuk
+  lintas NAT yang ketat.
+- Build release memakai keystore di `android/rmodz-upload.keystore` (jangan
+  commit ke repo; konfigurasi di `android/key.properties`).
