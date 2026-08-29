@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Allows RMODZ Agent to inject touch input, perform navigation (back/home/recent apps) and type text during an actively granted remote-support session. Nothing runs without your explicit permission.</string>
+</resources>
