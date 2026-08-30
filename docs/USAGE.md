@@ -44,6 +44,28 @@ Rules → New Rule → Port → TCP 8080 → Allow`.
 > Untuk diakses dari HP, pakai **IP LAN** PC (cek dengan `ipconfig`, cari IPv4).
 > Contoh `http://192.168.1.7:8080`. Pastikan port 8080 terbuka di firewall.
 
+### Akses lintas jaringan (Cloudflare quick tunnel)
+Kalau HP **tidak satu jaringan** dengan server (mis. HP pakai data seluler),
+pakai tunnel gratis dari Cloudflare supaya server bisa diakses dari mana saja.
+Media (screen/camera/mic) tetap P2P via WebRTC — tunnel hanya meneruskan
+signaling WebSocket.
+
+1. Pastikan server sudah jalan (`tools\start-server.bat`).
+2. Jalankan `tools\start-tunnel.bat` (Butuh `tools\cloudflared.exe`; jika belum
+   ada, unduh dari https://github.com/cloudflare/cloudflared/releases dan taruh
+   di folder `tools\`).
+3. Catat URL publik dari baris `https://<random>.trycloudflare.com` yang muncul.
+4. Build APK dengan URL tersebut (lihat bagian 2), misal:
+   `--dart-define=RMODZ_SERVER_URL=https://xxxxx.trycloudflare.com`.
+
+> ⚠️ URL **berubah setiap restart** tunnel. Kalau URL berubah, kamu harus
+> build ulang APK dengan URL baru. Untuk URL permanen, butuh *named tunnel* +
+> domain sendiri.
+>
+> Tunnel tidak membuka port 8080 di firewall — firewall rule di atas tidak
+> diperlukan jika pakai tunnel. Media antar jaringan yang bertemu NAT ketat
+> tetap butuh **TURN server** (lihat `server/README.md`).
+
 ---
 
 ## 2. Build APK dengan alamat server yang benar
