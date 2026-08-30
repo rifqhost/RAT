@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/agent_state.dart';
 import '../../../theme.dart';
 
@@ -10,6 +12,17 @@ class PairingPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final agent = context.watch<AgentState>();
     final code = agent.pairingCode;
+    final deviceId = agent.deviceId;
+    final deviceToken = agent.deviceToken;
+
+    String? qrData;
+    if (deviceId != null && deviceToken != null) {
+      qrData = jsonEncode({
+        'type': 'rmodz-pair',
+        'deviceId': deviceId,
+        'token': deviceToken,
+      });
+    }
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -29,10 +42,44 @@ class PairingPanel extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Generate a 6-digit code and give it to the person helping you. They enter it on their controller app to pair.',
+            'Scan the QR code with the Controller app, or generate a 6-digit code to enter manually.',
             style: TextStyle(color: Colors.white70),
           ),
           const SizedBox(height: 16),
+          // QR Code section
+          if (qrData != null) ...[
+            Center(
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: QrImageView(
+                      data: qrData,
+                      version: QrVersions.auto,
+                      size: 200.0,
+                      backgroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Scan with Controller app',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    deviceId ?? '',
+                    style: TextStyle(color: Colors.white60, fontSize: 11, fontFamily: 'monospace'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          // Manual pairing code section
           if (code == null) ...[
             SizedBox(
               width: double.infinity,
@@ -42,7 +89,7 @@ class PairingPanel extends StatelessWidget {
                   foregroundColor: AppTheme.accent,
                 ),
                 onPressed: agent.canPair ? () => agent.requestPairingCode() : null,
-                child: const Text('Generate pairing code'),
+                child: const Text('Generate pairing code (manual)'),
               ),
             ),
           ] else ...[

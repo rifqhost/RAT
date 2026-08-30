@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/controller_state.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
+import 'scan_qr_screen.dart';
 
 class ConnectDeviceScreen extends StatefulWidget {
   const ConnectDeviceScreen({super.key});
@@ -35,17 +36,33 @@ class _ConnectDeviceScreenState extends State<ConnectDeviceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.password, color: AppTheme.accent, size: 40),
+                const Icon(Icons.qr_code_scanner, color: AppTheme.accent, size: 40),
                 const SizedBox(height: 12),
                 Text('Pair with an Agent', style: Theme.of(context).textTheme.titleLarge, textAlign: TextAlign.center),
                 const SizedBox(height: 6),
                 Text(
-                  'On the agent device, open RMODZ Remote Agent and tap "Generate Pairing Code".\n\n'
-                  'Then enter the shown Device ID and the 6-digit code here.',
+                  'Scan the QR code on the Agent device, or enter the Device ID and 6-digit code manually.',
                   style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
+                // QR Scanner button
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: const Text('Scan QR Code'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: const BorderSide(color: AppTheme.accent),
+                    foregroundColor: AppTheme.accent,
+                  ),
+                  onPressed: controller.ws == null ? null : () => _scanQr(context),
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 16),
+                // Manual entry
+                Text('Or enter manually:', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary), textAlign: TextAlign.center),
+                const SizedBox(height: 16),
                 TextField(
                   controller: _deviceId,
                   autofocus: true,
@@ -78,7 +95,7 @@ class _ConnectDeviceScreenState extends State<ConnectDeviceScreen> {
                 ElevatedButton.icon(
                   onPressed: controller.ws == null ? null : () => _connect(controller),
                   icon: const Icon(Icons.link),
-                  label: const Text('CONNECT'),
+                  label: const Text('CONNECT (Manual)'),
                 ),
               ],
             ),
@@ -88,6 +105,16 @@ class _ConnectDeviceScreenState extends State<ConnectDeviceScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _scanQr(BuildContext context) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const ScanQrScreen()),
+    );
+    if (result == true && mounted) {
+      // Pairing successful, refresh devices
+      context.read<ControllerState>().refreshDevices();
+    }
   }
 
   Future<void> _connect(ControllerState controller) async {

@@ -494,6 +494,48 @@ export class WsHub {
     }));
   }
 
+  // Auto-accept session for QR-paired devices with autoApprove=true
+  // Called from REST endpoint when pair has autoApprove flag
+  autoAcceptSession(
+    sessionId: string,
+    controllerDeviceId: string,
+    agentDeviceId: string,
+    permissions: Permission[],
+    sessionToken: string,
+  ): void {
+    // Join controller to session room
+    const controller = this.store.getDevice(controllerDeviceId);
+    if (controller?.online && controller.wsClientId) {
+      const controllerMeta = this.clients.get(controller.wsClientId);
+      if (controllerMeta) {
+        controllerMeta.sessionId = sessionId;
+        this.joinRoom(sessionId, controller.wsClientId);
+        this.sendTo(controllerMeta, envelope('SESSION_ACCEPTED', {
+          sessionId,
+          permissions,
+          sessionToken,
+          iceServers: this.iceServers,
+        }));
+      }
+    }
+    
+    // Join agent to session room
+    const agent = this.store.getDevice(agentDeviceId);
+    if (agent?.online && agent.wsClientId) {
+      const agentMeta = this.clients.get(agent.wsClientId);
+      if (agentMeta) {
+        agentMeta.sessionId = sessionId;
+        this.joinRoom(sessionId, agent.wsClientId);
+        this.sendTo(agentMeta, envelope('SESSION_ACCEPTED', {
+          sessionId,
+          permissions,
+          sessionToken,
+          iceServers: this.iceServers,
+        }));
+      }
+    }
+  }
+
   endSession(sessionId: string, reason: string, endedBy: 'controller' | 'agent' | 'server', exceptClientId?: string): void {
     const session = this.store.getSession(sessionId);
     if (!session) return;

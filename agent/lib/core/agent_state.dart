@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart' show AgentApiClient, DeviceInfoService;
 import 'file_receiver.dart';
 import 'native_bridge.dart';
@@ -30,6 +31,10 @@ class AgentState extends ChangeNotifier {
   List<String> permissions = [];
   bool sessionActive = false;
 
+  // Auto-accept sessions from paired controllers
+  bool _autoAcceptSessions = false;
+  bool get autoAcceptSessions => _autoAcceptSessions;
+
   WsClient? ws;
   WebRtcAgent? rtc;
   FileReceiver? receiver;
@@ -45,6 +50,7 @@ class AgentState extends ChangeNotifier {
     stage = AgentStage.loading;
     notifyListeners();
     try {
+      await _loadAutoAcceptSetting();
       deviceId = store.deviceId;
       if (!store.isRegistered || deviceId == null) {
         await _registerNewIdentity();
@@ -60,6 +66,18 @@ class AgentState extends ChangeNotifier {
       stage = AgentStage.needsIdentity;
       notifyListeners();
     }
+  }
+
+  Future<void> _loadAutoAcceptSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    _autoAcceptSessions = prefs.getBool('auto_accept_sessions') ?? false;
+  }
+
+  Future<void> setAutoAcceptSessions(bool value) async {
+    _autoAcceptSessions = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('auto_accept_sessions', value);
+    notifyListeners();
   }
 
   Future<void> _registerNewIdentity() async {
@@ -196,10 +214,36 @@ class AgentState extends ChangeNotifier {
           controllerDeviceId: payload['controllerDeviceId'] as String? ?? '',
           requestedPermissions: (payload['permissions'] as List?)?.cast<String>() ?? [],
         );
-        notifyListeners();
+        // Auto-accept if enabled
+        if (_autoAcceptSessions) {
+          final session = pendingSession!;
+          ws?.send(Protocol.sessionAccept(sessionId: session.sessionId, permissions: session.requestedPermissions));
+          pendingSession = null;
+          activeSessionId = session.sessionId;
+          permissions = session.requestedPermissions;
+          notifyListeners();
+          _startOffererFlow(session.sessionId, session.requestedPermissions);
+        } else {
+          notifyListeners();
+        }
         break;
       case 'SESSION_ACCEPTED':
-        // handled on controller; agent flow starts immediately after SESSION_ACCEPT
+        // Server auto-approved session (QR pairing with autoApprove)
+        // Start WebRTC offerer flow
+        final acceptedSessionId = payload['sessionId'] as String?;
+        final acceptedPermissions = (payload['permissions'] as List?)?.cast<String>() ?? [];
+        final iceServers = (payload['iceServers'] as List?)
+                ?.map((e) => (e as Map).cast<String, dynamic>())
+                .toList() ??
+            [];
+        if (acceptedSessionId != null) {
+          _iceServers = iceServers;
+          activeSessionId = acceptedSessionId;
+          permissions = acceptedPermissions;
+          sessionActive = true;
+          notifyListeners();
+          _startOffererFlow(acceptedSessionId, acceptedPermissions);
+        }
         break;
       case 'SESSION_ENDED':
         _cleanupSession();

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Store } from '../store.js';
 import { WsHub } from '../ws/hub.js';
 import { asyncHandler, HttpError, requireAuth, requireRole } from '../auth.js';
-import { generateDeviceId, randomToken, sha256, signDeviceToken } from '../crypto.js';
+import { generateDeviceId, randomToken, sha256, signDeviceToken, verifyDeviceToken } from '../crypto.js';
 
 const registerDeviceSchema = z.object({
   role: z.enum(['controller', 'agent']),
@@ -166,6 +166,69 @@ export function deviceRoutes(store: Store, hub: WsHub): Router {
       store.audit('PAIR_STARTED', controllerId, agentDeviceId);
       const delivered = hub.requestPairApproval(pair.id, agentDeviceId, controllerId, req.auth!.name ?? 'RMODZ Controller');
       res.status(201).json({ pairId: pair.id, status: pair.status, requiresApproval: true, agentNotified: delivered });
+    }),
+  );
+
+  // QR-based pairing: controller scans agent's QR (contains agentDeviceId + agentToken).
+  // Verifies agent token, creates/updates pair with status 'approved' and autoApprove: true.
+  // No 6-digit code, no agent approval prompt needed.
+  const pairQrSchema = z.object({
+    agentDeviceId: z.string().regex(/^RMDZ-[A-Z0-9]{6,10}$/),
+    agentToken: z.string().min(10),
+  });
+
+  router.post(
+    '/pair-qr',
+    requireAuth,
+    requireRole('controller'),
+    asyncHandler(async (req, res) => {
+      const parsed = pairQrSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new HttpError(400, 'validation_error', parsed.error.issues[0]?.message ?? 'Invalid QR pairing payload.');
+      }
+      const { agentDeviceId, agentToken } = parsed.data;
+      const controllerId = req.auth!.sub;
+      if (!controllerId.startsWith('RMDZ-')) {
+        throw new HttpError(400, 'controller_device_required', 'This client must be a registered controller device.');
+      }
+
+      // Verify the agent token belongs to the claimed agent device
+      const tokenPayload = verifyDeviceToken(agentToken);
+      if (!tokenPayload || tokenPayload.sub !== agentDeviceId || tokenPayload.role !== 'agent') {
+        throw new HttpError(401, 'invalid_agent_token', 'Agent token is invalid or does not match device ID.');
+      }
+
+      const agent = store.getDevice(agentDeviceId);
+      if (!agent || agent.role !== 'agent') {
+        throw new HttpError(404, 'agent_not_found', 'No agent device with that ID.');
+      }
+
+      // Check if already paired and approved
+      const existing = store.getPairByDevices(controllerId, agentDeviceId);
+      if (existing) {
+        // Update to approved with autoApprove if not already
+        const updated = store.updatePair(existing.id, {
+          status: 'approved',
+          approvedAt: existing.approvedAt ?? new Date().toISOString(),
+          autoApprove: true,
+        });
+        store.audit('PAIR_QR_UPDATED', controllerId, agentDeviceId);
+        res.json({ pairId: updated!.id, status: 'approved', requiresApproval: false });
+        return;
+      }
+
+      // Create new approved pair with autoApprove
+      const pair = store.createPair({
+        id: randomToken(12),
+        controllerDeviceId: controllerId,
+        agentDeviceId,
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
+        autoApprove: true,
+        createdAt: new Date().toISOString(),
+      });
+      store.audit('PAIR_QR_CREATED', controllerId, agentDeviceId);
+      res.status(201).json({ pairId: pair.id, status: 'approved', requiresApproval: false });
     }),
   );
 

@@ -100,6 +100,16 @@ class ApiClient {
     return PairingResult.fromJson(json);
   }
 
+  Future<Map<String, dynamic>> pairQr({required String agentDeviceId, required String agentToken}) async {
+    final json = await _call(
+      'POST',
+      '/devices/pair-qr',
+      body: {'agentDeviceId': agentDeviceId, 'agentToken': agentToken},
+      auth: true,
+    );
+    return json;
+  }
+
   Future<String> createSession({required String agentDeviceId, required List<String> permissions}) async {
     final json = await _call(
       'POST',

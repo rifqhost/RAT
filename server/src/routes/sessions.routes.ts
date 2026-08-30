@@ -41,16 +41,32 @@ export function sessionRoutes(store: Store, hub: WsHub): Router {
         throw new HttpError(403, 'not_paired', 'This device is not paired and approved.');
       }
 
+      // Check if pair has autoApprove - if so, auto-accept the session
+      const isAutoApprove = pair.autoApprove === true;
+
       const session = store.createSession({
         id: randomToken(14),
         controllerDeviceId: controllerId,
         agentDeviceId,
-        status: 'requested',
+        status: isAutoApprove ? 'active' : 'requested',
         permissions,
         createdAt: new Date().toISOString(),
         lastActivityAt: new Date().toISOString(),
+        ...(isAutoApprove ? { startedAt: new Date().toISOString() } : {}),
       });
-      store.audit('SESSION_REQUESTED', controllerId, `${session.id} -> ${agentDeviceId}`);
+      store.audit('SESSION_REQUESTED', controllerId, `${session.id} -> ${agentDeviceId}${isAutoApprove ? ' (auto-approved)' : ''}`);
+
+      if (isAutoApprove) {
+        // Auto-approve: notify both parties immediately via hub
+        const sessionToken = signSessionToken(session.id);
+        hub.autoAcceptSession(session.id, controllerId, agentDeviceId, permissions, sessionToken);
+        
+        store.audit('SESSION_STARTED', controllerId, `${session.id} (auto-approved)`);
+        res.status(201).json({ sessionId: session.id, status: 'active', sessionToken });
+        return;
+      }
+
+      // Normal flow: request agent approval
       const delivered = hub.requestSession(agentDeviceId, session.id, controllerId, req.auth?.name ?? 'RMODZ Controller', permissions);
       if (!delivered) {
         store.updateSession(session.id, { status: 'ended', endedAt: new Date().toISOString(), endedReason: 'agent_offline' });

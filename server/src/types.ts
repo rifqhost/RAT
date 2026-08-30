@@ -84,6 +84,7 @@ export interface Pair {
   createdAt: string;
   approvedAt?: string;
   revokedAt?: string;
+  autoApprove?: boolean;
 }
 
 export interface PairingCode {
