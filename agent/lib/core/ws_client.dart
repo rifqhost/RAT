@@ -103,6 +103,11 @@ class WsClient {
     }
     final env = WsEnvelope.fromJson(json);
     if (env.type == 'PONG') return;
+    if (env.type == 'AUTH_OK') {
+      _setState(WsState.connected);
+    } else if (env.type == 'AUTH_ERROR') {
+      _setState(WsState.disconnected);
+    }
     final wanted = _wanted.remove(env.type);
     if (wanted != null) {
       for (final c in wanted) {

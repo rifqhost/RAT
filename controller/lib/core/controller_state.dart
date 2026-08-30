@@ -34,7 +34,9 @@ class ControllerState extends ChangeNotifier {
   Future<void> bootstrap() async {
     session = await SessionStore.load();
     if (session != null) {
-      api = ApiClient(session!.authToken);
+      // Prefer the controller-device token so pairing/session REST calls work;
+      // fall back to the user token for older saved sessions.
+      api = ApiClient(session!.deviceToken ?? session!.authToken);
       await connectWs();
       notifyListeners();
     }
@@ -51,9 +53,12 @@ class ControllerState extends ChangeNotifier {
   }
 
   Future<void> _finalizeLogin(LoginResult login, String deviceName) async {
-    api = ApiClient(login.token);
-    // Register the controller device (idempotent-ish; new each login for demo).
-    final reg = await api.registerDevice(role: 'controller', name: deviceName);
+    final userApi = ApiClient(login.token);
+    // Register the controller device with the user token, then switch the same
+    // client to the controller-device token: the server requires a registered
+    // controller device identity (sub == RMDZ-...) for pairing/session/device
+    // endpoints (devices.routes.ts, sessions.routes.ts).
+    final reg = await userApi.registerDevice(role: 'controller', name: deviceName);
     final appSession = AppSession(
       authToken: login.token,
       user: {'id': login.userId, 'name': login.name, 'email': login.email},
@@ -63,7 +68,7 @@ class ControllerState extends ChangeNotifier {
     );
     await SessionStore.save(appSession);
     session = appSession;
-    api = ApiClient(login.token);
+    api = userApi..setToken(reg.deviceToken);
     await connectWs();
     notifyListeners();
   }

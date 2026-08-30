@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.content.Context
 import android.graphics.Path
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
@@ -19,6 +20,9 @@ class RMODZAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "RMODZAccess"
+
+        /** Duration per gesture segment so the synthesized timeline tracks real input. */
+        private const val MOVE_SEGMENT_MS = 20L
 
         @Volatile
         var instance: RMODZAccessibilityService? = null
@@ -56,22 +60,114 @@ class RMODZAccessibilityService : AccessibilityService() {
         return display
     }
 
+    // Accessibility gesture state so an ordered down -> move... -> up sequence is
+    // synthesized as a real drag/gesture instead of one tap per event.
+    private var pendingStroke: GestureDescription.StrokeDescription? = null
+    private var strokeEndTime: Long = 0
+    private var lastX = 0f
+    private var lastY = 0f
+
     private fun dispatchTouch(action: Int, x: Float, y: Float) {
-        // Android's accessibility gesture API dispatches complete gestures (down->move->up),
-        // not individual MotionEvent actions. For the touch-control MVP we synthesize a tap
-        // (down + up) at the given coordinate for every event the controller sends, which
-        // gives reliable click/select behaviour across apps.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            dispatchTap(x, y)
+            return
+        }
+        when (action) {
+            0 -> beginStroke(x, y)        // ACTION_DOWN
+            2 -> moveStroke(x, y)         // ACTION_MOVE
+            1 -> endStroke(x, y)          // ACTION_UP
+            else -> dispatchTap(x, y)
+        }
+    }
+
+    /** Starts a press-and-hold stroke that subsequent move/up events extend. */
+    private fun beginStroke(x: Float, y: Float) {
+        resetGesture()
         try {
-            val path = Path()
-            path.moveTo(x, y)
+            lastX = x
+            lastY = y
+            val path = Path().apply { moveTo(x, y) }
+            val stroke = GestureDescription.StrokeDescription(path, 0, MOVE_SEGMENT_MS, true)
+            if (dispatchGesture(strokeToGesture(stroke), null, null)) {
+                pendingStroke = stroke
+                strokeEndTime = MOVE_SEGMENT_MS
+            } else {
+                // Gesture rejected (e.g. another gesture in progress); fall back to a tap.
+                resetGesture()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "beginStroke failed", e)
+            resetGesture()
+        }
+    }
+
+    /** Extends the active stroke towards the new coordinate. */
+    private fun moveStroke(x: Float, y: Float) {
+        val previous = pendingStroke ?: return
+        try {
+            val path = Path().apply {
+                moveTo(lastX, lastY)
+                lineTo(x, y)
+            }
+            val start = strokeEndTime
+            val stroke = previous.continueStroke(path, start, MOVE_SEGMENT_MS, true)
+            if (dispatchGesture(strokeToGesture(stroke), null, null)) {
+                pendingStroke = stroke
+                strokeEndTime = start + MOVE_SEGMENT_MS
+                lastX = x
+                lastY = y
+            } else {
+                resetGesture()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "moveStroke failed", e)
+            resetGesture()
+        }
+    }
+
+    /** Finishes the active stroke at the given coordinate. */
+    private fun endStroke(x: Float, y: Float) {
+        val previous = pendingStroke ?: run {
+            // A lone UP with no active stroke - synthesize a tap
+            // so a standalone "tap" event still produces a click.
+            dispatchTap(x, y)
+            return
+        }
+        try {
+            val path = Path().apply {
+                moveTo(lastX, lastY)
+                lineTo(x, y)
+            }
+            val start = strokeEndTime
+            val stroke = previous.continueStroke(path, start, 0, false)
+            dispatchGesture(strokeToGesture(stroke), null, null)
+        } catch (e: Exception) {
+            Log.e(TAG, "endStroke failed", e)
+        } finally {
+            resetGesture()
+        }
+    }
+
+    private fun strokeToGesture(stroke: GestureDescription.StrokeDescription): GestureDescription =
+        GestureDescription.Builder().addStroke(stroke).build()
+
+    /** Simple down->up tap, used as a fallback for old APIs or rejected gestures. */
+    private fun dispatchTap(x: Float, y: Float) {
+        try {
+            val path = Path().apply { moveTo(x, y) }
             val stroke = GestureDescription.StrokeDescription(path, 0, 60)
             val gesture = GestureDescription.Builder()
                 .addStroke(stroke)
                 .build()
             dispatchGesture(gesture, null, null)
         } catch (e: Exception) {
-            Log.e(TAG, "dispatchTouch failed", e)
+            Log.e(TAG, "dispatchGesture failed", e)
         }
+    }
+
+    private fun resetGesture() {
+        pendingStroke = null
+        strokeEndTime = 0
     }
 
     private fun performGlobalActionSafely(action: String): Boolean {

@@ -156,11 +156,6 @@ class _TouchOverlayState extends State<_TouchOverlay> {
             _showTouchUnsupported(context);
           }
         },
-        onDoubleTap: () {
-          if (controller.sessionPermissions.contains('TOUCH')) {
-            _send(context, 'tap', Offset.zero);
-          }
-        },
         child: Container(color: Colors.transparent),
       ),
     );

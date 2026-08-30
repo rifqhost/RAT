@@ -262,13 +262,13 @@ class AgentState extends ChangeNotifier {
     var mapped = action;
     if (mapped == null) {
       switch (eventType) {
-        case 'down':
+        case 'touch_down':
           mapped = 0; // ACTION_DOWN
           break;
-        case 'move':
+        case 'touch_move':
           mapped = 2; // ACTION_MOVE
           break;
-        case 'up':
+        case 'touch_up':
           mapped = 1; // ACTION_UP
           break;
         default:
