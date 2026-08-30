@@ -489,6 +489,7 @@ export class WsHub {
       controllerDeviceId,
       controllerName,
       permissions,
+      iceServers: this.iceServers,
       requestedAt: Date.now(),
     }));
   }

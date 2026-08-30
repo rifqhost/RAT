@@ -88,7 +88,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
               );
               if (ok == true) {
-                await context.read<ControllerState>().logout();
+                await controller.logout();
               }
             },
             icon: const Icon(Icons.logout),

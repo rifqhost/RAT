@@ -80,9 +80,9 @@ class ApiClient {
       body: {
         'role': role,
         'name': name,
-        if (model != null) 'model': model,
-        if (androidVersion != null) 'androidVersion': androidVersion,
-        if (appVersion != null) 'appVersion': appVersion,
+        'model': ?model,
+        'androidVersion': ?androidVersion,
+        'appVersion': ?appVersion,
       },
       auth: true,
     );

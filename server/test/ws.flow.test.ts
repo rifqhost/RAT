@@ -132,6 +132,8 @@ test('full pairing + session signaling flow over WebSocket', async () => {
   marker('SESSION_REQUEST');
   const sessionRequest = await agentConn.next((m) => m.type === 'SESSION_REQUEST');
   assert.equal(sessionRequest.payload.sessionId, sessionId);
+  assert.ok(Array.isArray(sessionRequest.payload.iceServers), 'SESSION_REQUEST carries iceServers');
+  assert.ok(sessionRequest.payload.iceServers.length > 0, 'iceServers is not empty');
   const granted = ['SCREEN', 'TOUCH', 'CAMERA'];
   agentConn.ws.send(JSON.stringify({ id: 'm5', type: 'SESSION_ACCEPT', ts: Date.now(), payload: { sessionId, permissions: granted } }));
 

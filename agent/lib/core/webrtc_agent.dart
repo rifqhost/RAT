@@ -15,7 +15,7 @@ class WebRtcAgent {
 
   RTCPeerConnection? pc;
   RTCDataChannel? fileChannel;
-  List<MediaStream> _localStreams = [];
+  final List<MediaStream> _localStreams = [];
   MediaStreamTrack? _screenTrack;
   MediaStreamTrack? _cameraTrack;
   MediaStreamTrack? _micTrack;

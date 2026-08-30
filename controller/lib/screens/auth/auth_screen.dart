@@ -154,9 +154,8 @@ class _AuthScreenState extends State<AuthScreen> {
           deviceName: deviceName.isEmpty ? 'HP A Controller' : deviceName,
         );
       }
-      if (context.mounted) {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
-      }
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {

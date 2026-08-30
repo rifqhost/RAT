@@ -38,7 +38,8 @@ class AgentState extends ChangeNotifier {
   PendingPair? pendingPair;
   PendingSession? pendingSession;
 
-  String? _defaultName = 'RMODZ Agent';
+  final String _defaultName = 'RMODZ Agent';
+  List<Map<String, dynamic>> _iceServers = [];
 
   Future<void> bootstrap() async {
     stage = AgentStage.loading;
@@ -79,7 +80,7 @@ class AgentState extends ChangeNotifier {
 
   Future<void> _connectWebSocket() async {
     final ws = WsClient(deviceId: deviceId!, role: 'agent', deviceToken: deviceToken!);
-    ws.setDisplayName(deviceName ?? _defaultName!);
+    ws.setDisplayName(deviceName ?? _defaultName);
     this.ws = ws;
     ws.addHandler(_onWs);
     receiver = FileReceiver(this);
@@ -185,6 +186,10 @@ class AgentState extends ChangeNotifier {
         notifyListeners();
         break;
       case 'SESSION_REQUEST':
+        _iceServers = (payload['iceServers'] as List?)
+                ?.map((e) => (e as Map).cast<String, dynamic>())
+                .toList() ??
+            [];
         pendingSession = PendingSession(
           sessionId: payload['sessionId'] as String,
           controllerName: (payload['controllerName'] as String?) ?? 'A controller',
@@ -296,11 +301,17 @@ class AgentState extends ChangeNotifier {
 
   void _applyPermission(String permission, bool granted) {
     if (permission == 'CAMERA') {
-      if (granted) rtc?.unmuteCamera();
-      else rtc?.muteCamera();
+      if (granted) {
+        rtc?.unmuteCamera();
+      } else {
+        rtc?.muteCamera();
+      }
     } else if (permission == 'MICROPHONE') {
-      if (granted) rtc?.unmuteMicrophone();
-      else rtc?.muteMicrophone();
+      if (granted) {
+        rtc?.unmuteMicrophone();
+      } else {
+        rtc?.muteMicrophone();
+      }
     } else if (permission == 'SCREEN' && !granted) {
       rtc?.stopScreen();
     }
@@ -313,7 +324,7 @@ class AgentState extends ChangeNotifier {
     try {
       rtc?.dispose();
       rtc = WebRtcAgent(ws: ws, sessionId: sessionId);
-      await rtc!.init(iceServers: const []);
+      await rtc!.init(iceServers: _iceServers);
       if (granted.contains('SCREEN')) {
         try {
           await rtc!.addScreenShare();

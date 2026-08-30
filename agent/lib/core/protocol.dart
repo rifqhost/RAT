@@ -43,11 +43,11 @@ class Protocol {
           'deviceId': deviceId,
           'role': role,
           'token': token,
-          if (name != null) 'name': name,
-          if (model != null) 'model': model,
-          if (androidVersion != null) 'androidVersion': androidVersion,
-          if (appVersion != null) 'appVersion': appVersion,
-          if (rejoin != null) 'rejoin': rejoin,
+          'name': ?name,
+          'model': ?model,
+          'androidVersion': ?androidVersion,
+          'appVersion': ?appVersion,
+          'rejoin': ?rejoin,
         },
       );
 
@@ -83,7 +83,7 @@ class Protocol {
         id: _uid(),
         type: 'SESSION_DENY',
         ts: DateTime.now().millisecondsSinceEpoch,
-        payload: {'sessionId': sessionId, if (reason != null) 'reason': reason},
+        payload: {'sessionId': sessionId, 'reason': ?reason},
       );
 
   static WsEnvelope sessionRejoin({required String sessionId, required String sessionToken}) => WsEnvelope(
@@ -135,7 +135,7 @@ class Protocol {
           'timestamp': DateTime.now().millisecondsSinceEpoch,
           'screenWidth': screenWidth,
           'screenHeight': screenHeight,
-          if (action != null) 'action': action,
+          'action': ?action,
         },
       );
 
@@ -143,7 +143,7 @@ class Protocol {
         id: _uid(),
         type: 'CONTROL_EVENT',
         ts: DateTime.now().millisecondsSinceEpoch,
-        payload: {'sessionId': sessionId, 'kind': kind, if (value != null) 'value': value},
+        payload: {'sessionId': sessionId, 'kind': kind, 'value': ?value},
       );
 
   static WsEnvelope fileRequest({
@@ -165,8 +165,8 @@ class Protocol {
           'fileName': fileName,
           'fileSize': fileSize,
           'mimeType': mimeType,
-          if (sha256 != null) 'sha256': sha256,
-          if (chunkSize != null) 'chunkSize': chunkSize,
+          'sha256': ?sha256,
+          'chunkSize': ?chunkSize,
         },
       );
 
@@ -181,7 +181,7 @@ class Protocol {
         id: _uid(),
         type: 'FILE_DECLINE',
         ts: DateTime.now().millisecondsSinceEpoch,
-        payload: {'sessionId': sessionId, 'transferId': transferId, if (reason != null) 'reason': reason},
+        payload: {'sessionId': sessionId, 'transferId': transferId, 'reason': ?reason},
       );
 
   static WsEnvelope fileProgress({required String sessionId, required String transferId, required int transferred}) => WsEnvelope(
@@ -195,7 +195,7 @@ class Protocol {
         id: _uid(),
         type: 'FILE_COMPLETE',
         ts: DateTime.now().millisecondsSinceEpoch,
-        payload: {'sessionId': sessionId, 'transferId': transferId, if (sha256 != null) 'sha256': sha256},
+        payload: {'sessionId': sessionId, 'transferId': transferId, 'sha256': ?sha256},
       );
 
   static WsEnvelope clipboard({required String sessionId, required String direction, required String text}) => WsEnvelope(
@@ -216,7 +216,7 @@ class Protocol {
         id: _uid(),
         type: 'DISCONNECT',
         ts: DateTime.now().millisecondsSinceEpoch,
-        payload: {'sessionId': sessionId, if (reason != null) 'reason': reason},
+        payload: {'sessionId': sessionId, 'reason': ?reason},
       );
 
   static WsEnvelope ping() => WsEnvelope(

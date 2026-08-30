@@ -58,11 +58,11 @@ class AgentApiClient {
     String? appVersion,
   }) async {
     final json = await _call('/devices/agent/register', {
-      if (deviceId != null) 'deviceId': deviceId,
-      if (name != null) 'name': name,
-      if (model != null) 'model': model,
-      if (androidVersion != null) 'androidVersion': androidVersion,
-      if (appVersion != null) 'appVersion': appVersion,
+      'deviceId': ?deviceId,
+      'name': ?name,
+      'model': ?model,
+      'androidVersion': ?androidVersion,
+      'appVersion': ?appVersion,
     });
     return AgentRegistration.fromJson(json);
   }

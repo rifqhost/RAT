@@ -7,14 +7,35 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverRoot = path.resolve(__dirname, '..');
 
-function parseJsonList(value: string | undefined, fallback: unknown[]): unknown[] {
-  if (!value) return fallback;
+export interface IceServerConfig {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+}
+
+function parseIceServers(value: string | undefined, fallback: string[]): IceServerConfig[] {
+  if (!value) return fallback.map((u) => ({ urls: u }));
+  let parsed: unknown[];
   try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : fallback;
+    const decoded = JSON.parse(value);
+    if (!Array.isArray(decoded)) return fallback.map((u) => ({ urls: u }));
+    parsed = decoded;
   } catch {
-    return fallback;
+    return fallback.map((u) => ({ urls: u }));
   }
+  return parsed.map((entry) => {
+    if (typeof entry === 'string') return { urls: entry };
+    if (typeof entry === 'object' && entry !== null) {
+      const e = entry as Record<string, unknown>;
+      const urls = e['urls'];
+      return {
+        urls: urls as string | string[],
+        ...(e['username'] !== undefined ? { username: String(e['username']) } : {}),
+        ...(e['credential'] !== undefined ? { credential: String(e['credential']) } : {}),
+      };
+    }
+    return { urls: String(entry) };
+  });
 }
 
 export const config = {
@@ -29,10 +50,10 @@ export const config = {
   rateLimitMax: Number(process.env.RATE_LIMIT_MAX ?? 120),
   rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60000),
   dataFile: process.env.DATA_FILE ?? path.join(serverRoot, 'data', 'store.json'),
-  stunServers: parseJsonList(process.env.STUN_SERVERS, [
+  stunServers: parseIceServers(process.env.STUN_SERVERS, [
     'stun:stun.l.google.com:19302',
     'stun:stun1.l.google.com:19302',
-  ]).map((s) => String(s)),
-  turnServers: parseJsonList(process.env.TURN_SERVERS, []).map((s) => String(s)),
+  ]),
+  turnServers: parseIceServers(process.env.TURN_SERVERS, []),
   corsOrigins: (process.env.CORS_ORIGINS ?? '*').split(',').map((s) => s.trim()),
 } as const;

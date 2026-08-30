@@ -56,7 +56,7 @@ Every WebSocket message is a JSON object:
 
 | Sender  → Receiver | Type                 | Payload                                              |
 |--------------------|----------------------|------------------------------------------------------|
-| server → agent     | `SESSION_REQUEST`    | `{ sessionId, controllerDeviceId, controllerName, permissions[], requestedAt }` |
+| server → agent     | `SESSION_REQUEST`    | `{ sessionId, controllerDeviceId, controllerName, permissions[], iceServers[], requestedAt }` |
 | agent → server     | `SESSION_ACCEPT`     | `{ sessionId, permissions[] }`                       |
 | agent → server     | `SESSION_DENY`       | `{ sessionId, reason? }`                             |
 | server → controller| `SESSION_ACCEPTED`   | `{ sessionId, permissions[], sessionToken, iceServers[] }` |

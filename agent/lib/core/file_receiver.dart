@@ -143,7 +143,9 @@ class FileReceiver {
     _sink = null;
     _currentTransferId = null;
     if (active.isNotEmpty) {
-      active.forEach((t) => t.status = ReceiveStatus.cancelled);
+      for (final t in active) {
+        t.status = ReceiveStatus.cancelled;
+      }
       finished.insertAll(0, active);
       active.clear();
     }

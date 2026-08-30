@@ -41,6 +41,9 @@ package_config.json
 *.key
 *.crt
 
+# Tooling local binaries (e.g. cloudflared.exe)
+tools/*.exe
+
 # Logs
 *.log
 npm-debug.log*

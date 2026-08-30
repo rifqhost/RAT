@@ -18,8 +18,8 @@ export function createApp() {
   const limiter = new RateLimiter();
   const store = new Store(config.dataFile);
   const hub = new WsHub(store, [
-    ...config.stunServers.map((u) => ({ urls: u })),
-    ...(config.turnServers as unknown as { urls: string[] }[]).map((t) => ({ urls: t.urls })),
+    ...config.stunServers,
+    ...config.turnServers,
   ]);
 
   app.set('trust proxy', true);

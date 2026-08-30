@@ -42,7 +42,7 @@ class NativeBridge {
         'action': action,
         'x': x,
         'y': y,
-        if (pointerId != null) 'pointerId': pointerId,
+        'pointerId': ?pointerId,
       });
     } on PlatformException {
       // ignore

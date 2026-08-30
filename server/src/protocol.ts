@@ -70,6 +70,7 @@ export const messageSchemas: Record<SessionMessageType, z.ZodTypeAny> = {
     controllerDeviceId: idString,
     controllerName: z.string(),
     permissions: permissionListSchema,
+    iceServers: z.array(z.unknown()).default([]),
     requestedAt: z.number(),
   }),
 

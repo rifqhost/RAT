@@ -15,10 +15,10 @@ class AppConfig {
   /// For WebSocket. Build a `ws://` / `wss://` URL from the HTTP base.
   static String get wsUrl {
     if (_base.startsWith('https://')) {
-      return _base.replaceFirst('https://', 'wss://') + '/ws';
+      return '${_base.replaceFirst('https://', 'wss://')}/ws';
     }
     if (_base.startsWith('http://')) {
-      return _base.replaceFirst('http://', 'ws://') + '/ws';
+      return '${_base.replaceFirst('http://', 'ws://')}/ws';
     }
     return '$_base/ws';
   }
